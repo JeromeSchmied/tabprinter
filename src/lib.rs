@@ -210,31 +210,6 @@ impl Table {
         }
     }
 
-    /// Creates a table from a CSV file.
-    /// The first row of the CSV file is used as the header.
-    pub fn from_csv(path: &str) -> io::Result<Self> {
-        let mut reader = csv::Reader::from_path(path)?;
-        let headers = reader.headers()?;
-        let mut table = Table::new(TableStyle::Simple);
-        for header in headers {
-            table.add_column(header, 10, Alignment::Left);
-        }
-        for result in reader.records() {
-            let record = result?;
-            table.add_row(record.iter().map(|s| Cell::new(s)).collect());
-        }
-        Ok(table)
-    }
-
-    /// Writes the table to a CSV file.
-    pub fn to_csv(&self, path: &str) -> io::Result<()> {
-        let mut writer = csv::Writer::from_path(path)?;
-        for row in &self.rows {
-            writer.write_record(row.iter().map(|cell| &cell.content))?;
-        }
-        Ok(writer.flush()?)
-    }
-
     /// Adds a column to the table.
     pub fn add_column(&mut self, header: &str, width: usize, alignment: Alignment) {
         self.columns.push(Column {
@@ -542,5 +517,41 @@ impl Table {
     /// Finds the maximum value in the specified column.
     pub fn max_column(&self, column_index: usize) -> Option<f64> {
         self.aggregate_column(column_index, |values| *values.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap())
+    }
+}
+
+#[cfg(feature = "csv")]
+mod csv_support {
+    pub use csv;
+}
+
+#[cfg(feature = "csv")]
+use csv_support::*;
+
+#[cfg(feature = "csv")]
+impl Table {
+    /// Creates a table from a CSV file.
+    /// The first row of the CSV file is used as the header.
+    pub fn from_csv(path: &str) -> io::Result<Self> {
+        let mut reader = csv::Reader::from_path(path)?;
+        let headers = reader.headers()?;
+        let mut table = Table::new(TableStyle::Simple);
+        for header in headers {
+            table.add_column(header, 10, Alignment::Left);
+        }
+        for result in reader.records() {
+            let record = result?;
+            table.add_row(record.iter().map(|s| Cell::new(s)).collect());
+        }
+        Ok(table)
+    }
+
+    /// Writes the table to a CSV file.
+    pub fn to_csv(&self, path: &str) -> io::Result<()> {
+        let mut writer = csv::Writer::from_path(path)?;
+        for row in &self.rows {
+            writer.write_record(row.iter().map(|cell| &cell.content))?;
+        }
+        Ok(writer.flush()?)
     }
 }
